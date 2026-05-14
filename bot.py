@@ -6,8 +6,8 @@ from aiogram.filters import Command
 from pytubefix import YouTube
 import instaloader
 
-# SIZNING ANIQ ISHLOVCHI TOKENINGIZ
-TOKEN = "7787334539:AAGR8YI-K9yYnQPlfQ2_h-68fFidN_E99mI"
+# BotFather bergan mutlaqo yangi faol token
+TOKEN = "8884399790:AAEOH3RNld8yDBh23lV-W8vAFjSHbnkkLX0"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -18,7 +18,7 @@ INSTAGRAM_REGEX = r'(https?://)?(www\.)?(instagram\.com)/(p|reel|tv|shorts)/.+'
 
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message):
-    await message.answer("Salom! Menga YouTube yoki Instagram havolasini yuboring! 🤖")
+    await message.answer("Salom! Menga YouTube yoki Instagram havolasini yuboring, yuklab beraman! 🤖")
 
 @dp.message(F.text)
 async def handle_links(message: types.Message):
@@ -43,13 +43,12 @@ async def handle_links(message: types.Message):
                 os.remove(video_path)
             await status.delete()
         except Exception as e:
-            await status.edit_text(f"❌ YouTube xatolik.")
+            await status.edit_text(f"❌ YouTube yuklashda xatolik yuz berdi.")
             print(e)
 
     elif re.match(INSTAGRAM_REGEX, url):
         status = await message.answer("🔄 Instagram yuklanmoqda...")
         try:
-            # Havolani to'g'ri tozalash algoritmi
             if '?' in url:
                 clean_url = url.split('?')[0]
             else:
@@ -65,10 +64,10 @@ async def handle_links(message: types.Message):
                 await message.answer_photo(photo=post.url, caption="📸 Instagram Post")
             await status.delete()
         except Exception as e:
-            await status.edit_text("❌ Instagram xatolik.")
+            await status.edit_text("❌ Instagram yuklashda xatolik.")
             print(e)
     else:
-        await message.answer("⚠️ Noma'lum havola!")
+        await message.answer("⚠️ Noma'lum havola! Faqat YouTube yoki Instagram havolalarini yuboring.")
 
 async def main():
     await dp.start_polling(bot)
