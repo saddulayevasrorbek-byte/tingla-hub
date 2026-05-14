@@ -55,8 +55,9 @@ def download_video(url, audio_only=False):
     else:
         ydl_opts = {
             **COMMON_OPTS,
-            'format': 'best[filesize<50M]/best',
+            'format': 'bestvideo[ext=mp4][filesize<50M]+bestaudio[ext=m4a]/best[ext=mp4]/best',
             'outtmpl': 'downloads/%(title)s.%(ext)s',
+            'merge_output_format': 'mp4',
         }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
