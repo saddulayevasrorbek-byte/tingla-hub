@@ -1,73 +1,89 @@
+import logging
 import os
-import re
 import asyncio
-from aiogram import Bot, Dispatcher, types, F
+import subprocess
+from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from pytubefix import YouTube
-import instaloader
 
-# BotFather bergan mutlaqo yangi faol token
-TOKEN = "8884399790:AAEOH3RNld8yDBh23lV-W8vAFjSHbnkkLX0"
+BOT_TOKEN = "8884399790:AAFOh8KumpO4yXXx-QkZBxaclkelIPuZpiI"
 
-bot = Bot(token=TOKEN)
+logging.basicConfig(level=logging.INFO)
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-L = instaloader.Instaloader()
-
-YOUTUBE_REGEX = r'(https?://)?(www\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)/.+'
-INSTAGRAM_REGEX = r'(https?://)?(www\.)?(instagram\.com)/(p|reel|tv|shorts)/.+'
 
 @dp.message(Command("start"))
-async def start_cmd(message: types.Message):
-    await message.answer("Salom! Menga YouTube yoki Instagram havolasini yuboring, yuklab beraman! 🤖")
+async def start(message: types.Message):
+    await message.answer(
+        "Salom! 🎵\n"
+        "YouTube yoki Instagram linkini yuboring — video/audio yuklab beraman!\n\n"
+        "Misol: https://www.youtube.com/watch?v=..."
+    )
 
-@dp.message(F.text)
-async def handle_links(message: types.Message):
+@dp.message()
+async def handle_link(message: types.Message):
     url = message.text.strip()
-    
-    if re.match(YOUTUBE_REGEX, url):
-        status = await message.answer("🔄 YouTube yuklanmoqda...")
-        try:
-            if "shorts/" in url:
-                url = url.replace("shorts/", "watch?v=")
-            
-            yt = YouTube(url)
-            stream = yt.streams.filter(progressive=True, file_extension='mp4').get_highest_resolution()
-            if not stream:
-                stream = yt.streams.filter(file_extension='mp4').get_highest_resolution()
-                
-            video_path = stream.download(output_path=".")
-            video_file = types.FSInputFile(video_path)
-            await message.answer_video(video=video_file, caption=f"🎬 {yt.title}")
-            
-            if os.path.exists(video_path):
-                os.remove(video_path)
-            await status.delete()
-        except Exception as e:
-            await status.edit_text(f"❌ YouTube yuklashda xatolik yuz berdi.")
-            print(e)
 
-    elif re.match(INSTAGRAM_REGEX, url):
-        status = await message.answer("🔄 Instagram yuklanmoqda...")
-        try:
-            if '?' in url:
-                clean_url = url.split('?')[0]
+    if not ("youtube.com" in url or "youtu.be" in url or "instagram.com" in url):
+        await message.answer("❌ Faqat YouTube yoki Instagram link yuboring!")
+        return
+
+    msg = await message.answer("⏳ Yuklanmoqda...")
+
+    try:
+        output_path = f"/tmp/{message.from_user.id}_%(title)s.%(ext)s"
+
+        cmd = [
+            "yt-dlp",
+            "--no-playlist",
+            "-f", "best[filesize<50M]/best",
+            "--max-filesize", "50m",
+            "-o", output_path,
+            "--print", "after_move:filepath",
+            url
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+
+        if result.returncode != 0:
+            cmd_audio = [
+                "yt-dlp",
+                "--no-playlist",
+                "-f", "bestaudio",
+                "--extract-audio",
+                "--audio-format", "mp3",
+                "--max-filesize", "50m",
+                "-o", output_path,
+                "--print", "after_move:filepath",
+                url
+            ]
+            result = subprocess.run(cmd_audio, capture_output=True, text=True, timeout=120)
+
+        if result.returncode == 0:
+            filepath = result.stdout.strip().split('\n')[-1]
+
+            if os.path.exists(filepath):
+                await msg.edit_text("📤 Yuborilmoqda...")
+
+                with open(filepath, 'rb') as f:
+                    if filepath.endswith('.mp3'):
+                        await message.answer_audio(f)
+                    else:
+                        await message.answer_video(f)
+
+                os.remove(filepath)
+                await msg.delete()
             else:
-                clean_url = url
-            
-            clean_url = clean_url.strip('/')
-            shortcode = clean_url.split('/')[-1]
-            
-            post = instaloader.Post.from_shortcode(L.context, shortcode)
-            if post.is_video:
-                await message.answer_video(video=post.video_url, caption="📸 Instagram Reels")
-            else:
-                await message.answer_photo(photo=post.url, caption="📸 Instagram Post")
-            await status.delete()
-        except Exception as e:
-            await status.edit_text("❌ Instagram yuklashda xatolik.")
-            print(e)
-    else:
-        await message.answer("⚠️ Noma'lum havola! Faqat YouTube yoki Instagram havolalarini yuboring.")
+                await msg.edit_text("❌ Fayl topilmadi. Qayta urining!")
+        else:
+            error = result.stderr[-500:] if result.stderr else "Noma'lum xatolik"
+            logging.error(f"yt-dlp error: {error}")
+            await msg.edit_text("❌ Yuklab bo'lmadi! Video himoyalangan bo'lishi mumkin.")
+
+    except subprocess.TimeoutExpired:
+        await msg.edit_text("❌ Vaqt tugadi! Video juda katta bo'lishi mumkin.")
+    except Exception as e:
+        logging.error(f"Error: {e}")
+        await msg.edit_text(f"❌ Xatolik: {str(e)[:200]}")
 
 async def main():
     await dp.start_polling(bot)
