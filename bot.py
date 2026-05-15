@@ -4,6 +4,7 @@ import asyncio
 import subprocess
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
+from aiogram.types import FSInputFile
 
 BOT_TOKEN = "8884399790:AAFOh8KumpO4yXXx-QkZBxaclkelIPuZpiI"
 
@@ -64,11 +65,10 @@ async def handle_link(message: types.Message):
             if os.path.exists(filepath):
                 await msg.edit_text("📤 Yuborilmoqda...")
 
-                with open(filepath, 'rb') as f:
-                    if filepath.endswith('.mp3'):
-                        await message.answer_audio(f)
-                    else:
-                        await message.answer_video(f)
+                if filepath.endswith('.mp3'):
+                    await message.answer_audio(FSInputFile(filepath))
+                else:
+                    await message.answer_video(FSInputFile(filepath))
 
                 os.remove(filepath)
                 await msg.delete()
