@@ -1,3 +1,4 @@
 aiogram==2.25.1
+aiohttp==3.9.5
 yt-dlp==2025.01.26
 requests==2.31.0
