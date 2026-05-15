@@ -7,6 +7,7 @@ from aiogram.filters import Command
 from aiogram.types import FSInputFile
 
 BOT_TOKEN = "8884399790:AAFOh8KumpO4yXXx-QkZBxaclkelIPuZpiI"
+COOKIES_FILE = "/app/cookies.txt"
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
@@ -35,6 +36,7 @@ async def handle_link(message: types.Message):
 
         cmd = [
             "yt-dlp",
+            "--cookies", COOKIES_FILE,
             "--no-playlist",
             "-f", "best[filesize<50M]/best",
             "--max-filesize", "50m",
@@ -48,6 +50,7 @@ async def handle_link(message: types.Message):
         if result.returncode != 0:
             cmd_audio = [
                 "yt-dlp",
+                "--cookies", COOKIES_FILE,
                 "--no-playlist",
                 "-f", "bestaudio",
                 "--extract-audio",
